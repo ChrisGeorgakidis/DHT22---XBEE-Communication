@@ -84,14 +84,113 @@
 #include <xbee_config.h>
 #include <types.h>
 
+ssize_t dht22_search(uint8_t *rom_search)
+{
+	#ifndef SINGLE_DEVICE_ON_ONEWIRE_BUS
+		ssize_t ret;
+		uint8_t rom[3 * 8], i = 0;
+		bool_t found = FALSE;
+
+		// Search for maximum 3 devices on the 1-Wire bus. //
+		ret = one_wire_search(rom, 3);
+		if (ret < 0)
+		{
+			// An error occured while looking for devices //
+			return ret;
+		}
+		else if (ret == 0)
+		{
+			// No devices found //
+			return -ENODEV;
+		}
+		else
+		{
+			// Devices found //
+		}
+	#else
+		ssize_t ret;
+		uint8_t rom[8];
+
+		ret = one_wire_read_rom(rom);
+		if (ret < 0)
+		{
+			return ret;
+		}
+		
+		memcpy(rom_search, rom, 8);
+
+		return 0;
+
+	#endif
+}
+
+
 void main(void)
 {
+	ssize_t ret; char option; uint8_t rom_search[8];
+	uint8_t *rom;
+	uint8_t data[5];
+
+	#ifndef SINGLE_DEVICE_ON_ONEWIRE_BUS
+		rom = rom_search;
+	#else
+		rom = NULL;
+	#endif
+	
 	sys_hw_init();
 	sys_xbee_init();
 	sys_app_banner();
 
+	printf("--------------------------------------------------------\n");
+	printf("------------------DHT22 Test application----------------\n");
+	printf("--------------------------------------------------------\n");
+	printf("-------System will automatically look for a DHT22-------\n");
+	printf("--------------------------------------------------------\n");
+
+	ret = dht22_search(rom_search);
+	if (ret < 0)
+	{
+		if (ret == -ENODEV)
+			printf("\nNo device found. You can perform a new search by pressing 'S' key\n");
+		else
+			printf("\nAn error has occurred. Error code: %d\n", ret);
+	}
+	else
+	{
+		printf("\nDHT22 found. ROM: %02X%02X%02X%02X%02X%02X%02X%02X\n",
+			   rom_search[7], rom_search[6], rom_search[5], rom_search[4],
+			   rom_search[3], rom_search[2], rom_search[1], rom_search[0]);
+	}
+
 	for (;;) {
-		/* Write your code here... */
+
+		// Starts the communication between the xbee and the DHT22 sensor. //
+		ret = dht_init_communication(rom);
+		if (ret < 0)
+		{
+			printf("\nCommunication Initialisation:\t[ERROR]\n");
+		}
+		else
+		{
+			printf("\nCommunication Initialisation:\t[OK]\n");
+		}
+
+		// Host reads data sent by DHT22 sensor. //
+		dht_read_data(data);
+
+		// Now has the whole data: Humidity + Temperature + Parity //
+		// Now host must check if he received the data correctly //
+		ret = dht_checksum(data);
+		if (ret)
+		{
+			printf("Data Transmission\t[OK]\n");
+		}
+		else
+		{
+			printf("Data Transmission\t[ERROR]\n");
+			printf("\t INFO	: Paritty Error\n");
+		}
+
 		sys_watchdog_reset();
 		sys_xbee_tick();
 	}

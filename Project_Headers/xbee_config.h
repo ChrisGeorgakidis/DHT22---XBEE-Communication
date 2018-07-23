@@ -33,6 +33,14 @@
 
 /* network0 component */
 
+/* one_wire0 components */
+#define ENABLE_ONE_WIRE
+#define SINGLE_DEVICE_ON_ONEWIRE_BUS
+
+
+/* dht22 component */
+#define ENABLE_DHT22
+
 /* uart0 component */
 #define ENABLE_UART
 #define UART_CFG_MODE_2W                1
@@ -43,6 +51,7 @@
 #define UART_CFG_RX_WATERMARK           1
 #define UART_CFG_RX_BUF_LEN             32
 #define ENABLE_STDIO_PRINTF_SCANF       1
+
 
 /* Used pins macros */
 #define XPIN_28_USED
