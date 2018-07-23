@@ -1,0 +1,216 @@
+TEMPERATURE & HUMIDITY DHT22 SENSOR - DOCUMENTATION
+
+____________________________|_______Humidity_______|________Temperature________
+Operating Range             |       0-100% RH      |   -40~80 Celcius degrees
+Accuracy                    | +-2% RH (max +-5% RH)|    +-0.5 Celcius degrees
+Resolution or Sensitivity   |       0.1% RH        |      0.1 Celcius degrees
+Repeatability               |       +-1% RH        |    +-0.2 Celcius degrees
+
+        ------------------------------
+      //             ____             \\
+     //            //    \\            \\
+    //            ||      ||            \\
+   //              \\____//              \\
+  //                                      \\
+  ||=======================================||
+  ||   |    |       |    |       |    |    ||
+  ||   |    |       |    |       |    |    ||
+  ||   |____|       |____|       |____|    ||
+  ||    ____         ____         ____     ||
+  ||-- |    |       |    |       |    |  --||
+  || | |    |       |    |       |    |  | ||
+  ||-- |____|       |____|       |____|  --||
+  ||    ____         ____         ____     ||
+  ||-- |    |       |    |       |    |  --||
+  || | |    |       |    |       |    |  | ||
+  ||-- |____|       |____|       |____|  --||
+  ||    ____         ____         ____     ||
+  ||-- |    |       |    |       |    |  --||
+  || | |    |       |    |       |    |  | ||
+  ||-- |____|       |____|       |____|  --||
+  ||    ____         ____         ____     ||
+  ||-- |    |       |    |       |    |  --||
+  || | |    |       |    |       |    |  | ||
+  ||-- |____|       |____|       |____|  --||
+  ||    ____         ____         ____     ||
+  ||-- |    |       |    |       |    |  --||
+  || | |    |       |    |       |    |  | ||
+  ||-- |____|       |____|       |____|  --||
+  ||    ____         ____         ____     ||
+  ||-- |    |       |    |       |    |  --||
+  || | |    |       |    |       |    |  | ||
+  ||-- |____|       |____|       |____|  --||
+  ||                                       ||
+  ||=======================================||
+     ||         ||           ||         ||
+     ||         ||           ||         ||
+     ||         ||           ||         ||
+     ||         ||           ||         ||
+     ||         ||           ||         ||
+     ||         ||           ||         ||
+    (VDD)     (DATA)        (NC)       (GND)
+
+  -------------------------------------
+||*** Electrical Connection Diagram ***||
+  -------------------------------------
+
+
+  _____________________          VDD               VDD       
+ |                     |         ___               ___       ___________
+ |                     |          |                 |       |           |
+ |                     |         |_| 5.1KΩ          |_1Pin__|           |
+ |                     |          |                         |           |
+ |                     |          |      DATA       2Pin    |           |
+ |         MCU         | <--------------------------------->|           |
+ |                     |                             _4Pin__|           |
+ |                     |                            |       |           | 
+ |                     |                            |       |___________|
+ |                     |                           ---       
+ |                     |                           GND
+ |_____________________| 
+  
+
+(*) Single bus usually require an external about 5.1KΩ resistor, so when the bus
+    is idle, its status is high.
+(*) The DATA bus is bi-directional. This means that you must identify if you can
+    write to / read from the bus.
+
+-> DATA = 16-bits RH data + 16-bits Temperature data + 8-bits check-sum
+
+Steps: (1) Convert 16-bits RH data from binary to decimal and divide it by 10.
+       (2) Convert 16-bits T data from binary to decimal and divide it by 10.
+** When highest bit of temperature is 1, it means the temperature is below 0 
+   Celcius degrees.
+** RH = Relative Humidity in %, T = Temperature in Celcius degrees.
+
+  -----------------------------
+||*** Communication Process ***||
+  -----------------------------
+
+When MCU send start signal, AM2302 (DHT22) changes from standby-status to running-
+status. When MCU finishes sending the start signal, AM2302 will send response
+signal of 40-bit data that reflect the relative humidity and temperature to MCU.
+Without start signal from MCU, AM2302 will not give response signal to MCU. One
+start signal for one response data from AM2302 that reflect the relative humidity
+and temperature. AM2302 will change to standby-status when data collecting finished
+if it doesn't receive start signal from MCU again.
+
+--> Start Communication (Step 1):
+
+       |              | Host       |                             | Sensor     |
+       |              | pulls up   |                             | pulls up   |
+VCC__  |              | _________  |                             | _________  |
+     \ |              |/         \ |                             |/         \ |
+      \|   0.8-20ms   /  20-200us \|          75-85us            /  75-85us  \|
+       \    ~1ms     /|   ~30us    \           ~80us            /|   ~80us    \
+GND    |\___________/ |            |\__________________________/ |            |\_______ ...
+       |Host pulls low|            | Sensor pulls low            |            | Start data 
+       |1ms minimum   |            |                             |            | transmission...
+
+  |______________________________||____________________________________________________|
+           Host's Signal                              Sensor's Signal
+
+--> AM2302 send data to MCU (Step 2):
+
+       |                   |                                        |
+       |                   |   Sensor outputs 1-bit data of "0"     |                             
+VCC__  |                   | _____________________________________  |
+     \ |                   |/                                     \ |
+      \|      48-55us      /                22-30us                \| 
+       \      ~50us       /|                 ~26us                  \
+GND    |\________________/ |                                        |\_____________
+       |  Start transmit   |                                        | Start transmit next
+       |    1-bit data     |                                        | 1-bit data ...
+
+
+       |                   |                                        |
+       |                   |   Sensor outputs 1-bit data of "1"     |                             
+VCC__  |                   | _____________________________________  |
+     \ |                   |/                                     \ |
+      \|      48-55us      /                68-75us                \| 
+       \      ~50us       /|                 ~70us                  \
+GND    |\________________/ |                                        |\_____________
+       |  Start transmit   |                                        | Start transmit next
+       |    1-bit data     |                                        | 1-bit data ...
+
+|___________________________________________________________________________________|
+                                    Sensor's Signal
+
+/!\ If signal from AM2302 is always high-voltage-level, it means AM2302 is not working
+    properly -> check electrical connection status.
+/!\ The interval of the whole communication process must be beyond 2 seconds. That means
+    you can only get new data from it once every 2 seconds.
+
+(*) Because they are master-slave structure, only the host calls the sensor and the sensor
+    will answer.
+
+"AM2302 Single-bus Communication Protocol"
+
+           Response         Humidity             Humidity            Temperature          Temperature           
+           Signal             High                 Low                   High                 Low              Parity byte
+___        __    __      _ _ _ _ _ _ _ _      _ _ _ _ _ _ _ _      _ _ _ _ _ _ _ _      _ _ _ _ _ _ _ _      _ _ _ _ _ _ _ _      ___ ...
+   |      |  |  |  |    | | | | | | | | |    | | | | | | | | |    | | | | | | | | |    | | | | | | | | |    | | | | | | | | |    |
+   |      |  |  |  |    |    8-bits     |    |    8-bits     |    |    8-bits     |    |    8-bits     |    |    8-bits     |    |
+   |______|  |__|  |____|_|_|_|_|_|_|_|_|____|_|_|_|_|_|_|_|_|____|_|_|_|_|_|_|_|_|____|_|_|_|_|_|_|_|_|____|_|_|_|_|_|_|_|_|____|
+    Start               M               L    M               L    M               L    M               L    M               L
+    Signal              S               S    S               S    S               S    S               S    S               S
+                        B               B    B               B    B               B    B               B    B               B
+
+                         
+  ---------------------------
+||*** Libraries Functions ***||
+  ---------------------------
+
+-> -> #include <one_wire.h> <- <-
+
+1-Wire Functions:
+    * one_wire_reset(uint8_t byte)
+        @brief       Performs a reset on the 1-Wire bus.
+        @retval      0 on success or < 0 if there is an error.
+    * one_wire_write_byte(uint8_t byte)
+        @brief       Sends 1 byte over the 1-Wire bus.
+        @param[in]   byte    byte to be transferred.
+        @retval      0 on success..
+    * one_wire_read_byte(uint8_t *rxbyte)
+        @brief       Read 1 byte from the 1-Wire bus.
+        @param[out]  rxbyte    the buffer where the received byte will be saved.
+        @retval      0 on success
+    * one_wire_write(const uint8_t *txbuf, uint8_t len)
+        @brief       Sends over the 1-Wire bus a buffer with a determined length.
+        @param[in]   txbuf    the buffer containing the bytes to be transferred.
+        @param[in]   len      the number of bytes to be transferred.
+        @retval     0 on success or < 0 if there is an error while transferring.
+    * one_wire_read(uint8_t *rxbuf, uint8_t len)
+        @brief       Reads from the 1-Wire bus determined number of bytes.
+        @param[out]  rxbuf    the buffer where the received bytes will be stored.
+        @param[in]   len      the number of bytes to be read.
+        @retval     0 on success or < 0 if there is an error while reading.
+    * one_wire_read_rom(uint8_t *romcode)
+        @brief       If there is only one device connected to the 1-Wire bus,
+                     reads its ROM code. This ROM is CRC8 checked before reporting
+                     a success.
+        @param[out]  romcode   the buffer where the ROM code will be stored.
+        @retval      0 on success or < 0 if the is an error while reading.
+    * one_wire_skip_rom()
+        @brief       Used when only one device is connected to the 1-Wire bus, so
+                     sending 32-bit ROM code is unnecessary.
+                     Usually used after a one_wire_reset() command.
+        @retval      0 on success or < 0 if the is an error while reading.
+    * one_wire_address(uint8_t *romcode)
+        @brief		 Used for addressing a specific device connected to the 1-Wire bus. 
+			    	 Usually used after a one_wire_reset() command.
+    	@param[in]   romcode the ROM code of the device to be addressed.
+    	@retval		 0 on success or <0 if there is an error.
+    * one_wire_search(uint8_t *rombuf, uint8_t len)
+        @brief		Performs the 1-Wire search algorithm and store ROM codes found.
+        @param[in]	rombuf	the buffer where ROM codes will be stored (should be big enough 
+        					to store maximum number of devices (e.g.: rombuf[8 * len]).
+    	@param[in]	len		the maximum number of device that can be found.
+    	@retval		>=0 number of devices found or <0 if there is any error while looking for devices. 
+    * crc_check(uint8_t *buffer, uint8_t len)
+        @brief      Performs a CRC (Cyclic Redundancy Check) over a buffer.
+        @param[in]  buffer  the buffer which will be checked.
+        @param[in]  len     the number of bytes to be considered.
+        @retval     int     the CRC result.
+
+
