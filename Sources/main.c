@@ -127,7 +127,7 @@ ssize_t dht22_search(uint8_t *rom_search)
 
 void main(void)
 {
-	ssize_t ret; char option; uint8_t rom_search[8];
+	ssize_t ret; uint8_t rom_search[8];
 	uint8_t *rom;
 	uint8_t data[5];
 
@@ -160,38 +160,49 @@ void main(void)
 		printf("\nDHT22 found. ROM: %02X%02X%02X%02X%02X%02X%02X%02X\n",
 			   rom_search[7], rom_search[6], rom_search[5], rom_search[4],
 			   rom_search[3], rom_search[2], rom_search[1], rom_search[0]);
+
+		for (;;)
+		{
+
+			// Starts the communication between the xbee and the DHT22 sensor. //
+			ret = dht_init_communication();
+			if (ret < 0)
+			{
+				printf("\nCommunication Initialisation:\t[ERROR]\n");
+			}
+			else
+			{
+				printf("\nCommunication Initialisation:\t[OK]\n");
+
+				// Host reads data sent by DHT22 sensor. //
+				ret = dht_read_data(data);
+				if (ret < 0)
+				{
+					printf("Data Transmission:\t[ERROR]\n");
+				}
+				else
+				{
+					printf("Data Transmission:\t[OK]\n");
+				}
+
+				// Now has the whole data: Humidity + Temperature + Parity //
+				// Now host must check if he received the data correctly //
+				ret = dht_checksum(data);
+				if (ret)
+				{
+					printf("Check Data:\t[OK]\n");
+				}
+				else
+				{
+					printf("Check Data:\t[ERROR]\n");
+					printf("\t INFO	: Parity Error\n");
+				}
+			}
+
+			sys_watchdog_reset();
+			sys_xbee_tick();
+		}
 	}
 
-	for (;;) {
-
-		// Starts the communication between the xbee and the DHT22 sensor. //
-		ret = dht_init_communication(rom);
-		if (ret < 0)
-		{
-			printf("\nCommunication Initialisation:\t[ERROR]\n");
-		}
-		else
-		{
-			printf("\nCommunication Initialisation:\t[OK]\n");
-		}
-
-		// Host reads data sent by DHT22 sensor. //
-		dht_read_data(data);
-
-		// Now has the whole data: Humidity + Temperature + Parity //
-		// Now host must check if he received the data correctly //
-		ret = dht_checksum(data);
-		if (ret)
-		{
-			printf("Data Transmission\t[OK]\n");
-		}
-		else
-		{
-			printf("Data Transmission\t[ERROR]\n");
-			printf("\t INFO	: Paritty Error\n");
-		}
-
-		sys_watchdog_reset();
-		sys_xbee_tick();
-	}
+	
 }

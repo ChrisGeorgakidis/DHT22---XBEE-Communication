@@ -36,7 +36,12 @@
 /* one_wire0 components */
 #define ENABLE_ONE_WIRE
 #define SINGLE_DEVICE_ON_ONEWIRE_BUS
-
+#define XPIN_1_WIRE_BUS                 XPIN_5
+#define ENABLE_GPIO_XPIN_5
+#define GPIO_CFG_DIR_5                  GPIO_CFG_OUTPUT
+#define GPIO_CFG_PULL_UP_EN_5           GPIO_CFG_PULL_UP_EN
+#define GPIO_CFG_SLEW_RATE_EN_5         GPIO_CFG_SLEW_RATE_EN
+#define GPIO_CFG_DRV_STR_5              GPIO_CFG_DRV_STR_LOW
 
 /* dht22 component */
 #define ENABLE_DHT22
@@ -71,6 +76,9 @@
 #include "xbee/discovery.h"
 #include "xbee/wpan.h"
 #include "xbee/atcmd.h"
+#include <one_wire.h>
+#include <gpios.h>
+#include <dht.h>
 #include <uart.h>
 
 #endif /* __XBEE_CONFIG_H_ */
