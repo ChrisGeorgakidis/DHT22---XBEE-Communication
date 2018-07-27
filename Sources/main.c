@@ -89,7 +89,7 @@ void main(void)
 {
 	ssize_t ret; uint8_t rom_search[8];
 	uint8_t *rom;
-	uint8_t data[5];
+	uint8_t rxbuf[5];
 	
 	sys_hw_init();
 	sys_xbee_init();
@@ -101,43 +101,44 @@ void main(void)
 	printf("-------System will automatically look for a DHT22-------\n");
 	printf("--------------------------------------------------------\n");
 
+	// Starts the communication between the xbee and the DHT22 sensor. //
+	ret = dht_init_communication();
+	ret = dht_read_data(rxbuf);
+	// if (ret < 0)
+	// {
+	// 	//printf("\nCommunication Initialisation:\t[ERROR]\n");
+	// }
+	// else
+	// {
+	// 	printf("\nCommunication Initialisation:\t[OK]\n");
+
+	// 	// Host reads data sent by DHT22 sensor. //
+	// 	ret = dht_read_data(rxbuf);
+	// 	if (ret < 0)
+	// 	{
+	// 		printf("Data Transmission:\t[ERROR]\n");
+	// 	}
+	// 	else
+	// 	{
+	// 		printf("Data Transmission:\t[OK]\n");
+
+	// 		// Now has the whole data: Humidity + Temperature + Parity //
+	// 		// Now host must check if he received the data correctly //
+	// 		ret = dht_checksum(rxbuf);
+	// 		if (ret)
+	// 		{
+	// 			printf("Check Data:\t[OK]\n");
+	// 		}
+	// 		else
+	// 		{
+	// 			printf("Check Data:\t[ERROR]\n");
+	// 			printf("\t INFO	: Parity Error\n");
+	// 		}
+	// 	}
+	// }
+
 	for (;;)
 	{
-
-		// Starts the communication between the xbee and the DHT22 sensor. //
-		ret = dht_init_communication();
-		if (ret < 0)
-		{
-			//printf("\nCommunication Initialisation:\t[ERROR]\n");
-		}
-		else
-		{
-			printf("\nCommunication Initialisation:\t[OK]\n");
-
-			// Host reads data sent by DHT22 sensor. //
-			ret = dht_read_data(data);
-			if (ret < 0)
-			{
-				printf("Data Transmission:\t[ERROR]\n");
-			}
-			else
-			{
-				printf("Data Transmission:\t[OK]\n");
-
-				// Now has the whole data: Humidity + Temperature + Parity //
-				// Now host must check if he received the data correctly //
-				ret = dht_checksum(data);
-				if (ret)
-				{
-					printf("Check Data:\t[OK]\n");
-				}
-				else
-				{
-					printf("Check Data:\t[ERROR]\n");
-					printf("\t INFO	: Parity Error\n");
-				}
-			}
-		}
 
 		sys_watchdog_reset();
 		sys_xbee_tick();
