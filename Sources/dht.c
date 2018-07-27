@@ -207,16 +207,8 @@ ssize_t dht_read_data(uint8_t *rxbuf)
     uint8_t mask;
     uint8_t *rxbyte;
 
-    //rxbuf[0] = 0;
-    //rxbuf[1] = 0; 
-    //rxbuf[2] = 0;
-    //rxbuf[3] = 0;
-    //rxbuf[4] = 0;
-
     // Host collect all the samples of the communication //
-    //printf("Sampling...\n");
     i = 0;
-    //gpio_config_dir(XPIN_1_WIRE_BUS, GPIO_CFG_INPUT);
     while (i < 260)
     {
         samples[i] = gpio_get(XPIN_1_WIRE_BUS);
@@ -224,11 +216,12 @@ ssize_t dht_read_data(uint8_t *rxbuf)
         sys_udelay(20);
     }
     
-    for (i = 0; i < 260; i++)
-    {
-        printf("%d", samples[i]); 
-    }
-    printf("\n");
+    // for (i = 0; i < 260; i++)
+    // {
+    //     printf("%d", samples[i]); 
+    // }
+    // printf("\n");
+    sys_watchdog_reset();
 
     // Host decodes the samples to take the sensor's data //
     for (j = 0; j < 40; j++)
@@ -238,8 +231,11 @@ ssize_t dht_read_data(uint8_t *rxbuf)
     
     j = 0;
     i = 0;
+
     while(i < 260)
     {
+        sys_watchdog_reset();
+        printf("sample[%d] = %d | j = %d\n", i, samples[i], j);
         if (samples[i] == 0)
         {
             i++;
@@ -250,19 +246,20 @@ ssize_t dht_read_data(uint8_t *rxbuf)
             {
                 // This sample is part of the previous one //
                 i++;
+                continue;
             }
             if (samples[i + 1] == 0 || (samples[i + 1] == 1 && samples[i + 2] == 0))
             {
                 // data = 0 //
                 data[j] = 0;
-                printf("%d", data[j]);
+                //printf("%d", data[j]);
                 i++;
             }
             else if (samples[i + 1] == 1 && samples[i + 2] == 1 && (samples[i + 3] == 0 || (samples[i + 3] == 1 && samples[i + 4] == 0)))
             {
                 // data = 1 //
                 data[j] = 1;
-                printf("%d", data[j]);
+                //printf("%d", data[j]);
                 i++;
             }
             else{
@@ -273,6 +270,11 @@ ssize_t dht_read_data(uint8_t *rxbuf)
         }
     }
     printf("\n");
+
+    for (j = 0; j < 40; j++)
+    {
+        printf("data[%d] = %d\n", j, data[j]);
+    }
 
     for (i = 0; i < 5; i++)
     {
@@ -288,17 +290,6 @@ ssize_t dht_read_data(uint8_t *rxbuf)
             mask >>= 1;
         }
     }
-
-    //  // Decode the data //
-    //  for (j = 0; j < 40; j++)
-    //  {
-    //      i = j / 8;
-    //      if (data[j] == 1)
-    //      {
-    //          rxbyte[i] |= mask;
-    //      }
-    //      mask >>= 1;
-    //  }
      
      for (i = 0; i < 5; i++)
      {
@@ -310,18 +301,29 @@ ssize_t dht_read_data(uint8_t *rxbuf)
 
 ssize_t dht_checksum(uint8_t *data)
 {
-    uint8_t humidity_high = data[0];
-    uint8_t humidity_low = data[1];
-    uint8_t temperature_high = data[2];
-    uint8_t temperature_low = data[3];
-    uint8_t parity = data[4];
+    uint8_t humidity_high = *data;
+    uint8_t humidity_low = *(data + 1);
+    uint8_t temperature_high = *(data + 2);
+    uint8_t temperature_low = *(data + 3);
+    uint8_t parity = *(data + 4);
+    uint8_t sum;
+    uint16_t humidity, humidity_high_shifted;
+    int16_t temperature;
+    uint16_t temperature_high_shifted;
 
-    uint8_t sum = humidity_high  + humidity_low + temperature_high + temperature_low;
+    // Translate the Humidity and Temperature //
+    humidity_high_shifted = humidity_high;
+    humidity = ((humidity_high_shifted << 8) | humidity_low) / 10;
+    printf("Humidity: %d RH\n", humidity);
+
+    temperature_high_shifted = temperature_high;
+    temperature = ((temperature_high_shifted << 8) | temperature_low) / 10;
+    printf("Temperature: %d oC\n", temperature);
+
+    sum = humidity_high  + humidity_low + temperature_high + temperature_low;
 
     printf("sum = %u,  parity = %u\n", sum, parity);
 
     // Returns "1" if sum == parity, "0" otherwise //
     return (sum == parity);
 }
-//  1  2  3  4  5    6    7   8  9  10 11 12 13 14 15 16 17   18 19 20 21  22 23 24 25   26 27 28 29 30 31 32 33 34   35   36  37   38   39   40  41  42 43 44 45  46 47 48 49
-//00100100100100111001110011001001101001001001001001001001100010010010011001001001001110010010010010010010010010011100111001100111001110011100110010001001001001100100100100100

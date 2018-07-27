@@ -104,6 +104,23 @@ void main(void)
 	// Starts the communication between the xbee and the DHT22 sensor. //
 	ret = dht_init_communication();
 	ret = dht_read_data(rxbuf);
+	sys_watchdog_reset();
+	printf("\nCommunication Initialisation:\t[OK]\n");
+	printf("Data Transmission:\t[OK]\n");
+
+	if (ret == 0)
+	{
+		ret = dht_checksum(rxbuf);
+		if (ret)
+		{
+			printf("Check Data:\t[OK]\n");
+		}
+		else
+		{
+			printf("Check Data:\t[ERROR]\n");
+			printf("\t INFO	: Parity Error\n");
+		}
+	}
 	// if (ret < 0)
 	// {
 	// 	//printf("\nCommunication Initialisation:\t[ERROR]\n");
