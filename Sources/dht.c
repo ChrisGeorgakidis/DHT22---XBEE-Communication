@@ -200,27 +200,23 @@ ssize_t dht_read_data(uint8_t *rxbuf)
     // when all the data are '1'. So the maximum time for 1-bit of   //
     // data '1' is: 55us + 75us = 130us. So the total 40-bit data    //
     // need 5200us = 5.2ms. This function takes data samples every   //
-    // 20us. So by the end of the whole process we will have 260     //
+    // 10us. So by the end of the whole process we will have 520     //
     // samples.                                                      //
-    bool_t samples[260];
+    bool_t samples[520];
     bool_t data[40];
     uint8_t mask;
     uint8_t *rxbyte;
+    uint8_t ones = 0;
 
     // Host collect all the samples of the communication //
     i = 0;
-    while (i < 260)
+    while (i < 520)
     {
         samples[i] = gpio_get(XPIN_1_WIRE_BUS);
         i++;
-        sys_udelay(20);
+        sys_udelay(10);
     }
     
-    // for (i = 0; i < 260; i++)
-    // {
-    //     printf("%d", samples[i]); 
-    // }
-    // printf("\n");
     sys_watchdog_reset();
 
     // Host decodes the samples to take the sensor's data //
@@ -232,43 +228,71 @@ ssize_t dht_read_data(uint8_t *rxbuf)
     j = 0;
     i = 0;
 
-    while(i < 260)
+    while(i < 520)
     {
         sys_watchdog_reset();
         printf("sample[%d] = %d | j = %d\n", i, samples[i], j);
-        if (samples[i] == 0)
+
+        if (samples[i] == 1)
         {
-            i++;
+            ones++;
         }
-        else // sample[i] == 1 //
+        else
         {
-            if (samples[i - 1] == 1)
+            // check if there is a sequence of '1' before the current cell //
+            if (ones != 0)
             {
-                // This sample is part of the previous one //
-                i++;
-                continue;
+                if (ones == 1 || ones == 2)
+                {
+                    // I treat 1 or 2 consecutive '1' as '0' //
+                    data[j] = 0;
+                }
+                else if (ones == 4 || ones == 5)
+                {
+                    // I treat 4 or 5 consecutive '1' as '1' //
+                    data[j] = 1;
+                }
+                j++;
             }
-            if (samples[i + 1] == 0 || (samples[i + 1] == 1 && samples[i + 2] == 0))
-            {
-                // data = 0 //
-                data[j] = 0;
-                //printf("%d", data[j]);
-                i++;
-            }
-            else if (samples[i + 1] == 1 && samples[i + 2] == 1 && (samples[i + 3] == 0 || (samples[i + 3] == 1 && samples[i + 4] == 0)))
-            {
-                // data = 1 //
-                data[j] = 1;
-                //printf("%d", data[j]);
-                i++;
-            }
-            else{
-                i++;
-                continue;
-            }
-            j++;
+            ones = 0;
         }
+        i++;
     }
+
+    //     if (samples[i] == 0)
+    //     {
+    //         i++;
+    //     }
+    //     else // sample[i] == 1 //
+    //     {
+    //
+    //         if (samples[i - 1] == 1)
+    //         {
+    //             // This sample is part of the previous one //
+    //             i++;
+    //             continue;
+    //         }
+    //         if (samples[i + 1] == 0 || (samples[i + 1] == 1 && samples[i + 2] == 0))
+    //         {
+    //             // data = 0 //
+    //             data[j] = 0;
+    //             //printf("%d", data[j]);
+    //             i++;
+    //         }
+    //         else if (samples[i + 1] == 1 && samples[i + 2] == 1 && (samples[i + 3] == 0 || (samples[i + 3] == 1 && samples[i + 4] == 0)))
+    //         {
+    //             // data = 1 //
+    //             data[j] = 1;
+    //             //printf("%d", data[j]);
+    //             i++;
+    //         }
+    //         else{
+    //             i++;
+    //             continue;
+    //         }
+    //         j++;
+    //     }
+    // }
     printf("\n");
 
     for (j = 0; j < 40; j++)
