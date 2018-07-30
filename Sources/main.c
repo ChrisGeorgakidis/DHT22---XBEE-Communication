@@ -90,6 +90,7 @@ void main(void)
 	ssize_t ret; uint8_t rom_search[8];
 	uint8_t *rom;
 	uint8_t rxbuf[5];
+	ssize_t i;
 	
 	sys_hw_init();
 	sys_xbee_init();
@@ -101,26 +102,26 @@ void main(void)
 	printf("-------System will automatically look for a DHT22-------\n");
 	printf("--------------------------------------------------------\n");
 
-	// Starts the communication between the xbee and the DHT22 sensor. //
-	ret = dht_init_communication();
-	ret = dht_read_data(rxbuf);
-	sys_watchdog_reset();
-	printf("\nCommunication Initialisation:\t[OK]\n");
-	printf("Data Transmission:\t[OK]\n");
+	// // Starts the communication between the xbee and the DHT22 sensor. //
+	// ret = dht_init_communication();
+	// ret = dht_read_data(rxbuf);
+	// sys_watchdog_reset();
+	// printf("\nCommunication Initialisation:\t[OK]\n");
+	// printf("Data Transmission:\t[OK]\n");
 
-	if (ret == 0)
-	{
-		ret = dht_checksum(rxbuf);
-		if (ret)
-		{
-			printf("Check Data:\t[OK]\n");
-		}
-		else
-		{
-			printf("Check Data:\t[ERROR]\n");
-			printf("\t INFO	: Parity Error\n");
-		}
-	}
+	// if (ret == 0)
+	// {
+	// 	ret = dht_checksum(rxbuf);
+	// 	if (ret)
+	// 	{
+	// 		printf("Check Data:\t[OK]\n");
+	// 	}
+	// 	else
+	// 	{
+	// 		printf("Check Data:\t[ERROR]\n");
+	// 		printf("\t INFO	: Parity Error\n");
+	// 	}
+	// }
 	// if (ret < 0)
 	// {
 	// 	//printf("\nCommunication Initialisation:\t[ERROR]\n");
@@ -156,8 +157,32 @@ void main(void)
 
 	for (;;)
 	{
-
+		// Starts the communication between the xbee and the DHT22 sensor. //
+		ret = dht_init_communication();
+		ret = dht_read_data(rxbuf);
 		sys_watchdog_reset();
-		sys_xbee_tick();
+		printf("\nCommunication Initialisation:\t[OK]\n");
+		printf("Data Transmission:\t[OK]\n");
+
+		if (ret == 0)
+		{
+			ret = dht_checksum(rxbuf);
+			if (ret)
+			{
+				printf("Check Data:\t[OK]\n");
+			}
+			else
+			{
+				printf("Check Data:\t[ERROR]\n");
+				printf("\t INFO	: Parity Error\n");
+			}
+		}
+
+		// Wait 2 seconds until next communication //
+		for (i = 0; i < 2000; i++)
+		{
+			sys_watchdog_reset();
+			sys_xbee_tick();	
+		}
 	}
 }
